@@ -1,0 +1,22 @@
+# Template — copy to tax.toml and fill in your own figures. The real tax.toml is git-ignored.
+#
+# Tax inputs that are NOT in Moneybird — per tax year.
+# Read with the standard library: tomllib.load(open("tax.toml", "rb"))
+#
+# Sources:
+#   wage / wage_tax          -> employer annual statement (jaaropgave, PDF, Jan/Feb)
+#   factor_a                 -> UPO from your pension provider; year T's annual margin uses
+#                               factor A of T-1
+#   aggregate_income         -> final income tax assessment of T-1
+#   business_hours           -> Moneybird time_entries (track them!); this field is the manual fallback
+# Upload the PDFs (annual statement, UPO, assessment) to the Moneybird inbox as an archive;
+# Agent 4 reads them there with LLM extraction. Filling them in manually is fine too.
+
+[2026]
+employment_hours_per_week = 40     # contracted hours with your employer (0 if none)
+starter = true                     # ≤2 of the previous 5 years claimed the self-employed deduction
+wage = 0                           # taxable wage from the annual statement
+wage_tax = 0                       # withheld wage tax from the annual statement
+factor_a_prev_year = 0.0           # pension accrual (factor A) of T-1, from your UPO
+aggregate_income_prev_year = 0     # aggregate income of T-1, from the final assessment
+business_hours_fallback = 0        # hours worked in the business (fallback while not tracked in Moneybird)

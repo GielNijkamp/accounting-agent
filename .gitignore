@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Runtime output
+logs/
+
+# Your real tax inputs (personal figures) — copy tax.example.toml to tax.toml
+tax.toml
+
+# Downloaded reference spec (fetch with the curl command in the README)
+openapi.json
