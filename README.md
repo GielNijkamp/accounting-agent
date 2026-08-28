@@ -83,3 +83,7 @@ into English: *KIA* (kleinschaligheidsinvesteringsaftrek, small-scale investment
 *factor A* (pension accrual), *annual margin* (jaarruimte), *accruals* (transitoria),
 *self-employed / starter deduction* (zelfstandigen- / startersaftrek), *SME profit exemption*
 (MKB-winstvrijstelling).
+
+## License
+
+MIT — see [LICENSE](LICENSE).
