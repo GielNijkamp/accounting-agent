@@ -2,8 +2,10 @@
 
 Four small [Claude](https://claude.com)-powered agents that automate the recurring bookkeeping
 and tax admin of a Dutch sole trader (zzp) on top of [Moneybird](https://www.moneybird.com/).
-Moneybird is the datastore and the review dashboard; [`moneybird-cli`](https://github.com/moneybird/openapi)
-handles every API call, the scripts orchestrate, and Claude does the judgment calls.
+Moneybird is the datastore and the review dashboard; a separate command-line tool,
+`moneybird-cli`, handles every API call, the scripts orchestrate, and Claude does the judgment
+calls. `moneybird-cli` is a required external dependency and is **not** included in this repo
+(see [Setup](#setup)).
 
 Every agent runs read-only by default (it only prints proposals). Nothing is written to
 Moneybird unless you pass `--book`, and every booking can be reverted in Moneybird.
@@ -25,13 +27,19 @@ role split per agent.
 
 ## Setup
 
-Requires Python 3.11+ (uses the standard-library `tomllib`) and a configured `moneybird-cli`.
+Requires:
+
+- **Python 3.11+** (uses the standard-library `tomllib`).
+- **`moneybird-cli`** — a command-line wrapper around the [Moneybird API](https://github.com/moneybird/openapi)
+  that the agents shell out to. It is **not included in this repo**; you need it on your `PATH`
+  (as `moneybird-cli`), logged in to your administration. The scripts only depend on its
+  `--output raw` JSON and the sub-commands listed in `docs/COMMANDS.md`.
 
 ```bash
 python -m venv .venv
 .venv/bin/pip install -r requirements.txt
 export ANTHROPIC_API_KEY=sk-ant-...        # https://platform.claude.com
-moneybird-cli login <token>                # if not already logged in
+moneybird-cli login <token>                # your Moneybird CLI, if not already logged in
 ```
 
 Copy `tax.example.toml` to `tax.toml` and fill in the inputs that are not in Moneybird (wage,
