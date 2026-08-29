@@ -163,13 +163,45 @@ def load_company_context() -> str:
     return "\n".join(context_parts)
 
 
+def reconcile_proposals(
+    mutations: list[dict], raw: list[Proposal], accounts: dict[str, dict]
+) -> list[Proposal]:
+    """Return exactly one proposal per input mutation, in input order.
+
+    Pure (no API calls), so it is unit-testable. Handles the two ways the model's output can
+    drift from the input:
+      - drops a proposal whose mutation_id we never asked about (hallucinated), which would
+        otherwise KeyError later when looked up by id;
+      - synthesizes a zero-confidence "review manually" proposal for any mutation the model
+        returned nothing for, so it surfaces as a question instead of silently vanishing.
+    Also flags an invalid ledger_account_id (as before) and de-duplicates repeated mutation_ids.
+    """
+    valid_ids = {m["id"] for m in mutations}
+    by_id: dict[str, Proposal] = {}
+    for v in raw:
+        if v.mutation_id not in valid_ids:
+            continue  # hallucinated / out-of-scope mutation_id
+        if v.ledger_account_id not in accounts:
+            v.confidence = 0.0
+            v.rationale += " [invalid ledger account id, review manually]"
+        by_id[v.mutation_id] = v  # last write wins if the model duplicated a mutation
+    proposals: list[Proposal] = []
+    for m in mutations:
+        v = by_id.get(m["id"])
+        if v is None:
+            v = Proposal(mutation_id=m["id"], ledger_account_id="",
+                         confidence=0.0, rationale="no classification returned — review manually")
+        proposals.append(v)
+    return proposals
+
+
 def classify(mutations: list[dict], accounts: dict[str, dict], company_context: str) -> list[Proposal]:
     client = anthropic.Anthropic()
     schema_txt = json.dumps(
         [{"id": a["id"], "name": a["name"], "type": a["account_type"]} for a in accounts.values()],
         ensure_ascii=False,
     )
-    proposals: list[Proposal] = []
+    raw: list[Proposal] = []
     for i in range(0, len(mutations), BATCH):
         batch = mutations[i : i + BATCH]
         payload = json.dumps(
@@ -196,12 +228,8 @@ def classify(mutations: list[dict], accounts: dict[str, dict], company_context: 
             }],
             output_format=Proposals,
         )
-        for v in response.parsed_output.proposals:
-            if v.ledger_account_id not in accounts:
-                v.confidence = 0.0
-                v.rationale += " [invalid ledger account id, review manually]"
-            proposals.append(v)
-    return proposals
+        raw.extend(response.parsed_output.proposals)
+    return reconcile_proposals(mutations, raw, accounts)
 
 
 def bookable(v: Proposal) -> bool:
@@ -240,14 +268,19 @@ def main() -> None:
     matches = match_invoices(mutations)
     if matches:
         print(f"== Invoice links ({len(matches)}) ==")
+        linked = 0
         for mid, match in matches.items():
             m = per_id[mid]
             print(f"  {m['date']}  {m['amount']:>10}  -> {match['booking_type']}"
                   f" {match['ref']} ({match['contact']})")
             if args.book:
-                book_invoice(m, match)
+                try:
+                    book_invoice(m, match)
+                    linked += 1
+                except Exception as e:
+                    print(f"    ⚠️  linking failed, left unprocessed: {e}")
         if args.book:
-            print(f"{len(matches)} mutations linked to their invoice.")
+            print(f"{linked}/{len(matches)} mutations linked to their invoice.")
         print()
 
     mutations = [m for m in mutations if m["id"] not in matches]
@@ -266,13 +299,22 @@ def main() -> None:
               f" -> {name} ({v.confidence:.0%}) — {v.rationale}")
 
     print(f"== Proposals ({len(certain)}) ==")
+    booked: list[Proposal] = []
+    failed = 0
     for v in certain:
         show(v)
         if args.book:
-            book(v, per_id[v.mutation_id])
+            try:
+                book(v, per_id[v.mutation_id])
+                booked.append(v)
+            except Exception as e:
+                failed += 1
+                print(f"    ⚠️  booking failed, left unprocessed: {e}")
     if args.book and certain:
-        print(f"\n{len(certain)} mutations booked (can be reverted in Moneybird via unlink).")
-        if any(float(per_id[v.mutation_id]["amount"]) < 0 for v in certain):
+        print(f"\n{len(booked)}/{len(certain)} mutations booked (revert in Moneybird via unlink).")
+        if failed:
+            print(f"{failed} failed to book — still unprocessed; fix the cause and re-run.")
+        if any(float(per_id[v.mutation_id]["amount"]) < 0 for v in booked):
             print("⚠️  Direct bookings to an expense account do NOT register deductible input VAT."
                   " For costs with Dutch VAT, upload the invoice/receipt to the Moneybird inbox"
                   " and link the mutation to it.")
