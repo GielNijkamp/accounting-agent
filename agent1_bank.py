@@ -36,6 +36,10 @@ Guidelines:
   account if it exists, otherwise the best match, and always give a confidence below 0.8.
 - Uncertain (vague description, unusual counterparty, private vs business unclear): confidence
   below 0.8 — then it becomes a question for the owner, not an automatic booking.
+- A payment that settles an existing invoice (it references an invoice number, or clearly
+  matches a customer/supplier invoice — including a partial payment or installment) must NOT be
+  booked to a revenue or expense account: that double-counts the invoice. Give it a confidence
+  below 0.8 so it becomes a question and gets linked to the invoice in Moneybird instead.
 - Use only ids from the given chart of accounts. Do not invent anything: the rationale must
   follow from the description, counterparty, amount or date."""
 

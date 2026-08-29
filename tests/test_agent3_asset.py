@@ -50,9 +50,37 @@ def test_disposal_calendar_years():
     assert disposals_at_risk(on_boundary, 2025) == []
 
 
+def test_capitalize_rolls_back_on_link_failure():
+    import agent3_asset as a
+    from agent3_asset import AssetJudgment
+    calls = []
+
+    def fake_mb(*args):
+        calls.append(args)
+        if "create" in args:
+            return {"id": "A1"}
+        if "sources" in args:
+            raise RuntimeError("link boom")
+        if "delete" in args:
+            return None
+
+    a.mb = fake_mb
+    o = AssetJudgment(detail_id="d1", is_asset=True, name="Laptop", lifespan_years=5,
+                      residual_value=0.0, confidence=0.9, rationale="x")
+    try:
+        a.capitalize(o, {"date": "2026-01-01", "amount_excl": 900}, "LED")
+        assert False, "expected the link failure to re-raise"
+    except RuntimeError:
+        pass
+    # created the asset, then rolled it back (deleted) after the link failed
+    assert any("create" in args for args in calls)
+    assert any("delete" in args and "A1" in args for args in calls)
+
+
 if __name__ == "__main__":
     test_kia_scale()
     test_disposals_at_risk()
     test_capitalized_detail_ids()
     test_disposal_calendar_years()
+    test_capitalize_rolls_back_on_link_failure()
     print("all checks OK")

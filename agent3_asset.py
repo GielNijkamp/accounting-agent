@@ -137,6 +137,9 @@ def assess(candidates: list[dict]) -> list[AssetJudgment]:
 # ---------- actions ----------
 
 def capitalize(o: AssetJudgment, line: dict, ledger_id: str) -> None:
+    """Create the asset and link it to its invoice line. If the link fails, delete the asset
+    (compensating rollback): an asset created but not linked is invisible to the
+    already-capitalized check, so a re-run would otherwise create a duplicate."""
     asset = mb(
         "assets", "create",
         "--name", o.name,
@@ -146,7 +149,18 @@ def capitalize(o: AssetJudgment, line: dict, ledger_id: str) -> None:
         "--value_change_plan_attributes",
         json.dumps({"lifespan_in_years": o.lifespan_years, "residual_value": str(o.residual_value)}),
     )
-    mb("assets", "sources", asset["id"], "--detail_id", o.detail_id)
+    asset_id = asset["id"]
+    try:
+        mb("assets", "sources", asset_id, "--detail_id", o.detail_id)
+    except Exception as e:
+        print(f"    ⚠️  linking asset to its invoice line failed ({e}); rolling back the asset.")
+        try:
+            mb("assets", "delete", asset_id)
+            print(f"    rolled back asset {asset_id}.")
+        except Exception as de:
+            print(f"    ⚠️  ROLLBACK FAILED — orphan asset id={asset_id} ({o.name!r}) created but not"
+                  f" linked; delete or link it in Moneybird. ({de})")
+        raise
 
 
 def main() -> None:
@@ -183,9 +197,16 @@ def main() -> None:
         if not ledger_id:
             print("⚠️  No asset ledger account found — create it in Moneybird.")
         else:
+            created, failed = 0, 0
             for o in certain:
-                capitalize(o, per_id[o.detail_id], ledger_id)
-            print(f"\n{len(certain)} assets created and linked to their invoice line.")
+                try:
+                    capitalize(o, per_id[o.detail_id], ledger_id)
+                    created += 1
+                except Exception:
+                    failed += 1  # capitalize already printed the detail + rollback status
+            print(f"\n{created}/{len(certain)} assets created and linked to their invoice line.")
+            if failed:
+                print(f"{failed} failed (see above) — re-run after fixing the cause.")
     if questions:
         print(f"  ({len(questions)} uncertain proposals — review manually)")
 

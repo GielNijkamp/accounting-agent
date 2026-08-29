@@ -170,9 +170,9 @@ def accrual_proposals(fiscal_year: int) -> list[dict]:
     return proposals
 
 
-def book_accruals(proposals: list[dict], prepaid_id: str, fiscal_year: int) -> None:
-    """Two general journal entries: 31 Dec move the cost out, 1 Jan move it back in — without
-    the counter-entry the amount would stay on the balance sheet forever."""
+def _accrual_entries(proposals: list[dict], prepaid_id: str) -> tuple[list[dict], list[dict]]:
+    """Build the two balanced entry sets: `out` moves the cost to prepaid (31 Dec), `back`
+    reverses it (1 Jan). Pure, so it's unit-testable."""
     out, back = [], []
     for v in proposals:
         amount = f"{v['amount_excl'] * v['fraction']:.2f}"
@@ -187,12 +187,71 @@ def book_accruals(proposals: list[dict], prepaid_id: str, fiscal_year: int) -> N
              "debit": amount, "credit": "0"},
             {"ledger_account_id": prepaid_id, "description": desc, "debit": "0", "credit": amount},
         ]
-    mb("documents", "general_journal_documents", "create",
-       "--reference", f"accruals-{fiscal_year}", "--date", f"{fiscal_year}-12-31",
-       "--general_journal_document_entries_attributes", json.dumps(out))
-    mb("documents", "general_journal_documents", "create",
-       "--reference", f"accruals-{fiscal_year}-reversal", "--date", f"{fiscal_year + 1}-01-01",
-       "--general_journal_document_entries_attributes", json.dumps(back))
+    return out, back
+
+
+def _journals_by_reference(references: set[str]) -> dict[str, dict]:
+    """Existing general journal documents whose reference is one of `references`, keyed by
+    reference."""
+    found = {}
+    for d in mb_list("documents", "general_journal_documents", "list"):
+        ref = d.get("reference")
+        if ref in references:
+            found[ref] = d
+    return found
+
+
+def _post_journal(reference: str, date_str: str, entries: list[dict]) -> str:
+    doc = mb("documents", "general_journal_documents", "create",
+             "--reference", reference, "--date", date_str,
+             "--general_journal_document_entries_attributes", json.dumps(entries))
+    return doc["id"]
+
+
+def book_accruals(proposals: list[dict], prepaid_id: str, fiscal_year: int) -> None:
+    """Post two general journal entries — 31 Dec move the cost out, 1 Jan move it back — so a
+    prepaid cost isn't stranded on the balance sheet. Safe to re-run:
+
+    - if both entries already exist, skip;
+    - if only one exists (a prior partial write), post the missing one;
+    - if neither exists, post both — and if the reversal fails, delete the 31-Dec entry
+      (compensating rollback) so the cost is never left off the balance without its reversal.
+    """
+    main_ref = f"accruals-{fiscal_year}"
+    reversal_ref = f"accruals-{fiscal_year}-reversal"
+    date_main, date_reversal = f"{fiscal_year}-12-31", f"{fiscal_year + 1}-01-01"
+    existing = _journals_by_reference({main_ref, reversal_ref})
+
+    if main_ref in existing and reversal_ref in existing:
+        print(f"  accruals {fiscal_year} already posted — skipping.")
+        return
+
+    out, back = _accrual_entries(proposals, prepaid_id)
+
+    # self-heal a prior partial write: post only the missing entry
+    if main_ref in existing or reversal_ref in existing:
+        if reversal_ref not in existing:
+            _post_journal(reversal_ref, date_reversal, back)
+            print(f"  completed partial accruals {fiscal_year}: posted the missing 1-Jan reversal.")
+        else:
+            _post_journal(main_ref, date_main, out)
+            print(f"  completed partial accruals {fiscal_year}: posted the missing 31-Dec entry.")
+        return
+
+    # neither exists — post both, rolling back the first if the second fails
+    main_id = _post_journal(main_ref, date_main, out)
+    try:
+        _post_journal(reversal_ref, date_reversal, back)
+    except Exception as e:
+        print(f"  ⚠️  reversal failed ({e}); rolling back the 31-Dec entry to avoid a stranded cost.")
+        try:
+            mb("documents", "general_journal_documents", "delete", main_id)
+            print(f"  rolled back {main_ref}.")
+        except Exception as de:
+            print(f"  ⚠️  ROLLBACK FAILED — {main_ref} (id={main_id}) is posted without its reversal;"
+                  f" delete it in Moneybird. ({de})")
+        raise
+    print(f"  posted accruals {fiscal_year} ({len(proposals)} lines).")
 
 
 def main() -> None:
@@ -220,8 +279,10 @@ def main() -> None:
         if not prepaid_id:
             print("⚠️  No 'Prepaid expenses' ledger account — create it in Moneybird first.")
         else:
-            book_accruals(certain, prepaid_id, year)
-            print(f"General journal entry accruals-{year} posted ({len(certain)} lines).")
+            try:
+                book_accruals(certain, prepaid_id, year)
+            except Exception as e:
+                print(f"  ⚠️  accruals booking did not complete: {e}")
     if questions:
         print(f"  ({len(questions)} uncertain proposals — review manually)")
 

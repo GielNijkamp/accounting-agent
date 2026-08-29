@@ -60,10 +60,78 @@ def test_hours_skips_running_timer():
     assert agent2_tax.hours_from_moneybird(2026) == 2.0
 
 
+_LINE = {"amount_excl": 100.0, "fraction": 0.5, "description": "lic", "invoice": "INV1",
+         "ledger_account_id": "EXP"}
+
+
+def test_accrual_entries_balanced():
+    from agent2_tax import _accrual_entries
+    out, back = _accrual_entries([_LINE], "PREPAID")
+    tot = lambda entries, f: round(sum(float(e[f]) for e in entries), 2)
+    assert tot(out, "debit") == tot(out, "credit") == 50.0   # €100 x 50% = €50, balanced
+    assert tot(back, "debit") == tot(back, "credit") == 50.0
+    assert out[0]["ledger_account_id"] == "PREPAID" and out[0]["debit"] == "50.00"
+    assert back[0]["ledger_account_id"] == "EXP" and back[0]["debit"] == "50.00"  # reversal
+
+
+def test_accruals_skip_when_already_posted():
+    import agent2_tax as a
+    a.mb_list = lambda *args: [{"id": "d1", "reference": "accruals-2026"},
+                               {"id": "d2", "reference": "accruals-2026-reversal"}]
+    calls = []
+    a.mb = lambda *args: calls.append(args) or {"id": "x"}
+    a.book_accruals([_LINE], "PREPAID", 2026)
+    assert calls == []  # both exist -> nothing posted
+
+
+def test_accruals_rollback_on_reversal_failure():
+    import agent2_tax as a
+    a.mb_list = lambda *args: []  # neither exists yet
+    posted = []
+
+    def fake_mb(*args):
+        if "create" in args:
+            ref = args[args.index("--reference") + 1]
+            if ref.endswith("-reversal"):
+                raise RuntimeError("reversal boom")
+            posted.append(ref)
+            return {"id": "MAIN"}
+        if "delete" in args:
+            posted.append(("delete", args[-1]))
+            return None
+
+    a.mb = fake_mb
+    try:
+        a.book_accruals([_LINE], "PREPAID", 2026)
+        assert False, "expected the failure to re-raise"
+    except RuntimeError:
+        pass
+    assert posted == ["accruals-2026", ("delete", "MAIN")]  # posted the 31-Dec entry, then rolled it back
+
+
+def test_accruals_completes_partial():
+    import agent2_tax as a
+    a.mb_list = lambda *args: [{"id": "d1", "reference": "accruals-2026"}]  # only the 31-Dec entry
+    posted = []
+
+    def fake_mb(*args):
+        if "create" in args:
+            posted.append(args[args.index("--reference") + 1])
+            return {"id": "R"}
+
+    a.mb = fake_mb
+    a.book_accruals([_LINE], "PREPAID", 2026)
+    assert posted == ["accruals-2026-reversal"]  # self-heal: posts only the missing reversal
+
+
 if __name__ == "__main__":
     test_fraction()
     test_hours_criterion()
     test_deductions()
     test_fraction_malformed_period()
     test_hours_skips_running_timer()
+    test_accrual_entries_balanced()
+    test_accruals_skip_when_already_posted()
+    test_accruals_rollback_on_reversal_failure()
+    test_accruals_completes_partial()
     print("all checks OK")
