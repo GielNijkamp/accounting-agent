@@ -232,10 +232,19 @@ def main() -> None:
     did = [f"{len(candidates)} candidate line(s) >= €{CAPITALIZATION_THRESHOLD:.0f};"
            f" KIA {year}: €{kia(investments, year):.2f}"]
     todo, risks = [], []
-    if certain and not args.book:
-        todo.append(f"{len(certain)} asset(s) ready to capitalize — run with --book")
-    if questions:
-        todo.append(f"{len(questions)} uncertain asset judgement(s) — review manually")
+
+    def _asset(o: AssetJudgment) -> str:  # one line per proposed asset — each creates a depreciating asset
+        r = per_id[o.detail_id]
+        return (f"€{r['amount_excl']:.2f} {o.name} ({r['invoice']}) — {o.lifespan_years} yr life,"
+                f" residual €{o.residual_value:.0f} ({o.confidence:.0%}): {o.rationale}")
+
+    if args.book and certain:
+        did.append(f"{len(certain)} asset(s) capitalized (see transcript for any failures)")
+    else:
+        for o in certain:
+            todo.append("asset to capitalize · " + _asset(o))
+    for o in questions:
+        todo.append("uncertain asset · " + _asset(o))
     if at_risk:
         risks.append(f"{len(at_risk)} disposal(s) within {DISPOSAL_YEARS} years — possible disposal addition")
     report.record("agent3", did, todo, risks, booked=args.book)
