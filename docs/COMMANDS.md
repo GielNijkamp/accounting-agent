@@ -29,7 +29,8 @@ Notes:
   deposits, never revenue — this is in the system prompt of agent1_bank.py.
 - `--dry-run` shows the request without executing it — use it for every new write command.
 - `price` must be positive; both a decimal point and a comma are accepted.
-- <!-- ponytail: list paginates per 100; add --page once a period has >100 mutations -->
+- List endpoints paginate at ~100 rows; the agents fetch every page via `mb_list()` in
+  `moneybird.py`, so results are never silently truncated.
 
 ## Agent 2 — Tax (accruals, corrections, deductions)
 

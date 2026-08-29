@@ -18,7 +18,7 @@ from datetime import date
 import anthropic
 from pydantic import BaseModel
 
-from moneybird import MODEL, THRESHOLD, mb, chart_of_accounts, invoice_lines
+from moneybird import MODEL, THRESHOLD, mb, mb_list, chart_of_accounts, invoice_lines
 
 CAPITALIZATION_THRESHOLD = 450.0  # excl. VAT, per fixed asset
 
@@ -89,7 +89,7 @@ def disposals_at_risk(assets: list[dict], year: int) -> list[dict]:
 # ---------- data sources ----------
 
 def assets() -> list[dict]:
-    return mb("assets", "list") or []
+    return mb_list("assets", "list")
 
 
 def capitalized_detail_ids(assets: list[dict]) -> set[str]:

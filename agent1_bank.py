@@ -18,7 +18,7 @@ from typing import Any
 import anthropic
 from pydantic import BaseModel
 
-from moneybird import MODEL, THRESHOLD, mb, chart_of_accounts
+from moneybird import MODEL, THRESHOLD, mb, mb_list, chart_of_accounts
 
 BATCH = 25
 
@@ -55,8 +55,8 @@ def unprocessed_mutations(period: str | None) -> list[dict]:
     args = ["financial_mutations", "list"]
     if period:
         args += ["--filter", f"period:{period}"]
-    args += ["--select", '[.[] | select(.state == "unprocessed")]']
-    return mb(*args) or []
+    # Filter in Python, not via --select: mb_list paginates on the raw page (see moneybird.py).
+    return [m for m in mb_list(*args) if m.get("state") == "unprocessed"]
 
 
 def match_amount(amount: float, sales: list[dict], purchases: list[dict]) -> list[tuple[dict, str]]:
@@ -72,8 +72,8 @@ def match_invoices(mutations: list[dict]) -> dict[str, dict]:
     """Mutations that are the payment of an existing invoice. These should be linked to the
     document, not to an expense account — otherwise the costs/revenue appear twice in the
     books."""
-    sales = mb("sales_invoices", "list", "--filter", "state:open,late,pending_payment") or []
-    purchases = [d for d in (mb("documents", "purchase_invoices", "list") or [])
+    sales = mb_list("sales_invoices", "list", "--filter", "state:open,late,pending_payment")
+    purchases = [d for d in mb_list("documents", "purchase_invoices", "list")
                  if not d.get("payments")]
     matches = {}
     for m in mutations:
@@ -120,7 +120,7 @@ def company_verifications() -> dict[str, Any]:
 def company_products() -> list[dict[str, Any]]:
     """Fetch the products from Moneybird to understand the business activity."""
     try:
-        return mb("products", "list") or []
+        return mb_list("products", "list")
     except Exception:
         return []
 

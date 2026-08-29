@@ -22,7 +22,7 @@ from pathlib import Path
 import anthropic
 from pydantic import BaseModel
 
-from moneybird import MODEL, mb
+from moneybird import MODEL, mb, mb_list
 
 # Statutory annual-margin parameters per tax year.
 # ponytail: 2025 amounts; verify the 2026 offset/maxima on belastingdienst.nl.
@@ -66,7 +66,7 @@ def annual_margin(income_prev: float, factor_a_prev: float, year: int) -> float:
 
 
 def annuity_deposits(year: int) -> list[dict]:
-    mutations = mb("financial_mutations", "list", "--filter", f"period:{year}01..{year}12") or []
+    mutations = mb_list("financial_mutations", "list", "--filter", f"period:{year}01..{year}12")
     return [m for m in mutations
             if ANNUITY_RE.search(f"{m.get('message') or ''} {m.get('contra_account_name') or ''}")]
 
@@ -94,7 +94,7 @@ def inbox_pdfs() -> list[tuple[str, dict, dict]]:
     """(doc_type, document, attachment) for each PDF in the inbox."""
     out = []
     for doc_type in ("typeless_documents", "general_documents"):
-        for doc in mb("documents", doc_type, "list") or []:
+        for doc in mb_list("documents", doc_type, "list"):
             for att in doc.get("attachments") or []:
                 if att.get("content_type") == "application/pdf":
                     out.append((doc_type, doc, att))

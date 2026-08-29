@@ -19,7 +19,7 @@ from datetime import date, datetime
 import anthropic
 from pydantic import BaseModel
 
-from moneybird import MODEL, THRESHOLD, mb, chart_of_accounts, invoice_lines
+from moneybird import MODEL, THRESHOLD, mb, mb_list, chart_of_accounts, invoice_lines
 
 # Statutory amounts per tax year — review/complete yearly.
 # Keys use Dutch fiscal terms glossed here:
@@ -97,7 +97,7 @@ def deductions(profit: float, meets_hours_criterion: bool, starter: bool, year: 
 # ---------- data sources ----------
 
 def hours_from_moneybird(fiscal_year: int) -> float:
-    entries = mb("time_entries", "list", "--filter", f"period:{fiscal_year}01..{fiscal_year}12") or []
+    entries = mb_list("time_entries", "list", "--filter", f"period:{fiscal_year}01..{fiscal_year}12")
     sec = 0.0
     for e in entries:
         start = datetime.fromisoformat(e["started_at"].replace("Z", "+00:00"))
