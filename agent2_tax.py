@@ -318,16 +318,23 @@ def main() -> None:
     print(f"  taxable profit           €{d['taxable_profit']:>10.2f}")
 
     # --- run report ---
-    did = [f"{len(proposals)} accrual proposal(s); taxable profit €{d['taxable_profit']:.2f}"
-           f" (SME exemption €{d['sme_exemption']:.2f})"]
+    did = [f"taxable profit €{d['taxable_profit']:.2f} (SME exemption €{d['sme_exemption']:.2f})"]
     todo, risks = [], []
-    if certain:
-        if not prepaid_id:
-            todo.append("create the 'Prepaid expenses' ledger account to enable accrual booking")
-        elif not args.book:
-            todo.append(f"{len(certain)} accrual(s) ready — run with --book to post")
-    if questions:
-        todo.append(f"{len(questions)} uncertain accrual(s) — review manually")
+
+    def _accrual(v: dict) -> str:  # one line per proposed deferral — each is a journal entry
+        deferred = v["amount_excl"] * v["fraction"]
+        return (f"€{deferred:.2f} of {v['description']} ({v['invoice']}) — {v['fraction']:.0%}"
+                f" to next year ({v['confidence']:.0%}): {v['rationale']}")
+
+    if args.book and certain and prepaid_id:
+        did.append(f"{len(certain)} accrual(s) posted to 'Prepaid expenses'")
+    elif certain and not prepaid_id:
+        todo.append("create the 'Prepaid expenses' ledger account, then run --book to post these accruals")
+    if not (args.book and prepaid_id):
+        for v in certain:
+            todo.append("accrual to book · " + _accrual(v))
+    for v in questions:
+        todo.append("uncertain accrual · " + _accrual(v))
     if not hc["meets"]:
         risks.append("hours criterion NOT met → no self-employed/starter deduction this year")
     report.record("agent2", did, todo, risks, booked=args.book)
