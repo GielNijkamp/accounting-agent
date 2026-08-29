@@ -72,8 +72,17 @@ def kia(investments: float, year: int) -> float:
     return round(max(s["plateau"] - s["taper_pct"] * (investments - s["plateau_upto"]), 0), 2)
 
 
+def _years_later(d: date, n: int) -> date:
+    """d shifted forward n calendar years, clamping 29 Feb to 28 Feb in a non-leap target year."""
+    try:
+        return d.replace(year=d.year + n)
+    except ValueError:
+        return d.replace(year=d.year + n, day=28)
+
+
 def disposals_at_risk(assets: list[dict], year: int) -> list[dict]:
-    """Assets disposed within 5 years of purchase (risk of disposal addition)."""
+    """Assets disposed within 5 years of purchase (risk of disposal addition). Uses calendar
+    years, not a 365-day approximation, so leap days don't shift the boundary by a day or two."""
     at_risk = []
     for a in assets:
         d = a.get("disposal")
@@ -81,7 +90,7 @@ def disposals_at_risk(assets: list[dict], year: int) -> list[dict]:
             continue
         purchased = date.fromisoformat(a["purchase_date"])
         when = date.fromisoformat(d["date"]) if d.get("date") else None
-        if when and when.year == year and (when - purchased).days < DISPOSAL_YEARS * 365:
+        if when and when.year == year and when < _years_later(purchased, DISPOSAL_YEARS):
             at_risk.append({"name": a["name"], "purchased": a["purchase_date"],
                             "disposed": d.get("date"), "reason": d.get("reason")})
     return at_risk

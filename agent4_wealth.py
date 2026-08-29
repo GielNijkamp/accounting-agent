@@ -133,8 +133,11 @@ def main() -> None:
     income = cfg["aggregate_income_prev_year"]
     factor_a = cfg["factor_a_prev_year"]
 
-    # fetch missing inputs from the Moneybird inbox (LLM extraction)
-    if not income or not factor_a:
+    # Fetch missing inputs from the Moneybird inbox (LLM extraction). Trigger on a missing
+    # aggregate income only: 0 there means "not filled in", but a factor A of 0.0 is a
+    # legitimate value (no or just-started employer pension) and must not force extraction
+    # (and its LLM cost) on every run.
+    if not income:
         documents = extract_annual_documents()
         if documents:
             print("== Extracted documents (copy into tax.toml) ==")

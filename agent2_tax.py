@@ -56,14 +56,25 @@ class AccrualJudgments(BaseModel):
 
 # ---------- deterministic ----------
 
-def parse_period(p: str) -> tuple[date, date]:
-    a, b = p.split("..")
-    return (datetime.strptime(a, "%Y%m%d").date(), datetime.strptime(b, "%Y%m%d").date())
+def parse_period(p: str) -> tuple[date, date] | None:
+    """Parse a 'YYYYMMDD..YYYYMMDD' period, or return None if it isn't that shape — a malformed
+    string from the LLM, or an unexpected Moneybird format — instead of raising."""
+    try:
+        a, b = p.split("..")
+        start = datetime.strptime(a.strip(), "%Y%m%d").date()
+        end = datetime.strptime(b.strip(), "%Y%m%d").date()
+    except (ValueError, AttributeError):
+        return None
+    return (start, end) if end >= start else None
 
 
 def fraction_after_fiscal_year(period: str, fiscal_year: int) -> float:
-    """Part of the period that falls after 31 Dec of the fiscal year (per day)."""
-    start, end = parse_period(period)
+    """Part of the period that falls after 31 Dec of the fiscal year (per day). Returns 0.0 for
+    an unparseable period, so a bad string skips that line rather than crashing the run."""
+    parsed = parse_period(period)
+    if parsed is None:
+        return 0.0
+    start, end = parsed
     total = (end - start).days + 1
     boundary = date(fiscal_year, 12, 31)
     if end <= boundary:
@@ -100,8 +111,11 @@ def hours_from_moneybird(fiscal_year: int) -> float:
     entries = mb_list("time_entries", "list", "--filter", f"period:{fiscal_year}01..{fiscal_year}12")
     sec = 0.0
     for e in entries:
-        start = datetime.fromisoformat(e["started_at"].replace("Z", "+00:00"))
-        end = datetime.fromisoformat(e["ended_at"].replace("Z", "+00:00"))
+        started, ended = e.get("started_at"), e.get("ended_at")
+        if not started or not ended:
+            continue  # a running timer / incomplete entry has no completed duration yet
+        start = datetime.fromisoformat(started.replace("Z", "+00:00"))
+        end = datetime.fromisoformat(ended.replace("Z", "+00:00"))
         sec += (end - start).total_seconds() - (e.get("paused_duration") or 0)
     return round(sec / 3600, 1)
 

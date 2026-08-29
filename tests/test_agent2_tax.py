@@ -43,8 +43,27 @@ def test_deductions():
     assert c["self_employed_deduction"] == 800
 
 
+def test_fraction_malformed_period():
+    # unparseable / reversed periods return 0.0 (skip the line) instead of crashing
+    assert fraction_after_fiscal_year("not-a-period", 2026) == 0.0
+    assert fraction_after_fiscal_year("20260101", 2026) == 0.0            # missing ".."
+    assert fraction_after_fiscal_year("20261231..20260101", 2026) == 0.0  # reversed
+
+
+def test_hours_skips_running_timer():
+    import agent2_tax
+    agent2_tax.mb_list = lambda *a: [
+        {"started_at": "2026-01-01T09:00:00.000Z", "ended_at": "2026-01-01T11:00:00.000Z"},  # 2h
+        {"started_at": "2026-01-02T09:00:00.000Z", "ended_at": None},                         # running
+        {"started_at": "2026-01-03T09:00:00.000Z"},                                           # no ended_at
+    ]
+    assert agent2_tax.hours_from_moneybird(2026) == 2.0
+
+
 if __name__ == "__main__":
     test_fraction()
     test_hours_criterion()
     test_deductions()
+    test_fraction_malformed_period()
+    test_hours_skips_running_timer()
     print("all checks OK")

@@ -38,8 +38,21 @@ def test_capitalized_detail_ids():
     assert capitalized_detail_ids(assets) == {"111", "222"}
 
 
+def test_disposal_calendar_years():
+    # 2020-01-01 -> 2024-12-31 is within 5 calendar years (at risk), but a 365*5 = 1825-day
+    # rule would wrongly exclude it (that span is 1826 days incl. two leap days) — this is #14.
+    within = [{"name": "Rig", "purchase_date": "2020-01-01",
+               "disposal": {"date": "2024-12-31", "reason": "sold"}}]
+    assert [r["name"] for r in disposals_at_risk(within, 2024)] == ["Rig"]
+    # exactly 5 years later is NOT within 5 years
+    on_boundary = [{"name": "Rig", "purchase_date": "2020-01-01",
+                    "disposal": {"date": "2025-01-01", "reason": "sold"}}]
+    assert disposals_at_risk(on_boundary, 2025) == []
+
+
 if __name__ == "__main__":
     test_kia_scale()
     test_disposals_at_risk()
     test_capitalized_detail_ids()
+    test_disposal_calendar_years()
     print("all checks OK")
