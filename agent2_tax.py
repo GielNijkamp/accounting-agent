@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 from moneybird import MODEL, THRESHOLD, mb, mb_list, chart_of_accounts, invoice_lines
 from config import require_year, load_tax_config
+import report
 
 # Statutory amounts per tax year — review/complete yearly.
 # Keys use Dutch fiscal terms glossed here:
@@ -315,6 +316,21 @@ def main() -> None:
     print(f"  starter deduction        €{d['starter_deduction']:>10.2f}")
     print(f"  SME profit exemption     €{d['sme_exemption']:>10.2f}")
     print(f"  taxable profit           €{d['taxable_profit']:>10.2f}")
+
+    # --- run report ---
+    did = [f"{len(proposals)} accrual proposal(s); taxable profit €{d['taxable_profit']:.2f}"
+           f" (SME exemption €{d['sme_exemption']:.2f})"]
+    todo, risks = [], []
+    if certain:
+        if not prepaid_id:
+            todo.append("create the 'Prepaid expenses' ledger account to enable accrual booking")
+        elif not args.book:
+            todo.append(f"{len(certain)} accrual(s) ready — run with --book to post")
+    if questions:
+        todo.append(f"{len(questions)} uncertain accrual(s) — review manually")
+    if not hc["meets"]:
+        risks.append("hours criterion NOT met → no self-employed/starter deduction this year")
+    report.record("agent2", did, todo, risks, booked=args.book)
 
 
 if __name__ == "__main__":

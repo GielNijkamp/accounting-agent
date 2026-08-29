@@ -19,6 +19,7 @@ import anthropic
 from pydantic import BaseModel
 
 from moneybird import MODEL, THRESHOLD, mb, mb_list, chart_of_accounts
+import report
 
 BATCH = 25
 
@@ -263,6 +264,7 @@ def main() -> None:
     mutations = unprocessed_mutations(args.period)
     if not mutations:
         print("No unprocessed mutations.")
+        report.record("agent1", ["no unprocessed mutations"], [], [], booked=args.book)
         return
     per_id = {m["id"]: m for m in mutations}
     accounts = chart_of_accounts()
@@ -290,6 +292,13 @@ def main() -> None:
     mutations = [m for m in mutations if m["id"] not in matches]
     if not mutations:
         print("All mutations matched to invoices — no classification needed.")
+        if args.book:
+            report.record("agent1", [f"{linked}/{len(matches)} payment(s) linked to their invoice"],
+                          [], [], booked=True)
+        else:
+            report.record("agent1", [f"{len(matches)} payment(s) match an existing invoice"],
+                          [f"{len(matches)} invoice link(s) — run with --book, or link manually"],
+                          [], booked=False)
         return
 
     proposals = classify(mutations, accounts, company_context)
@@ -326,6 +335,25 @@ def main() -> None:
     print(f"\n== Questions ({len(questions)}) — book manually in Moneybird ==")
     for v in questions:
         show(v)
+
+    # --- run report ---
+    did, todo, risks = [], [], []
+    if matches:
+        did.append(f"{linked}/{len(matches)} payment(s) linked to their invoice" if args.book
+                   else f"{len(matches)} payment(s) match an invoice")
+        if not args.book:
+            todo.append(f"{len(matches)} invoice link(s) — run with --book, or link manually")
+    if args.book:
+        did.append(f"{len(booked)}/{len(certain)} classification(s) booked")
+        if failed:
+            risks.append(f"{failed} booking(s) failed — still unprocessed")
+    elif certain:
+        todo.append(f"{len(certain)} confident classification(s) — review, then run with --book")
+    if questions:
+        todo.append(f"{len(questions)} unclear mutation(s) — classify manually")
+    if any(float(per_id[v.mutation_id]["amount"]) < 0 for v in certain):
+        risks.append("some expense bookings won't register input VAT — attach the invoice/receipt")
+    report.record("agent1", did, todo, risks, booked=args.book)
 
 
 if __name__ == "__main__":

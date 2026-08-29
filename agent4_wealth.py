@@ -23,6 +23,7 @@ from pydantic import BaseModel
 
 from moneybird import MODEL, mb, mb_list
 from config import require_year, load_tax_config
+import report
 
 # Statutory annual-margin parameters per tax year.
 # ponytail: 2025 amounts; verify the 2026 offset/maxima on belastingdienst.nl.
@@ -174,6 +175,19 @@ def main() -> None:
     else:
         print("  none found — deposits from private accounts are not visible here;"
               " report those yourself in the tax return.")
+
+    # --- run report ---
+    did, todo, risks = [], [], []
+    if income:
+        did.append(f"annual margin {year}: €{annual_margin(income, factor_a, year):.2f}")
+        if not factor_a:
+            risks.append("factor A = 0 — only correct if your UPO confirms it")
+    else:
+        did.append("annual margin not computed (aggregate income missing)")
+        todo.append(f"fill aggregate income {year - 1} in tax.toml, or upload the assessment PDF to the inbox")
+    if deposits:
+        risks.append(f"{len(deposits)} annuity deposit(s) found — check they fit within the margin")
+    report.record("agent4", did, todo, risks)
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 from moneybird import MODEL, THRESHOLD, mb, mb_list, chart_of_accounts, invoice_lines
 from config import require_year
+import report
 
 CAPITALIZATION_THRESHOLD = 450.0  # excl. VAT, per fixed asset
 
@@ -226,6 +227,18 @@ def main() -> None:
             print(f"  {r['name']}: purchased {r['purchased']}, disposed {r['disposed']}"
                   f" ({r['reason']}) — within {DISPOSAL_YEARS} years; check the addition"
                   f" if total disposals > €{DISPOSAL_THRESHOLD}")
+
+    # --- run report ---
+    did = [f"{len(candidates)} candidate line(s) >= €{CAPITALIZATION_THRESHOLD:.0f};"
+           f" KIA {year}: €{kia(investments, year):.2f}"]
+    todo, risks = [], []
+    if certain and not args.book:
+        todo.append(f"{len(certain)} asset(s) ready to capitalize — run with --book")
+    if questions:
+        todo.append(f"{len(questions)} uncertain asset judgement(s) — review manually")
+    if at_risk:
+        risks.append(f"{len(at_risk)} disposal(s) within {DISPOSAL_YEARS} years — possible disposal addition")
+    report.record("agent3", did, todo, risks, booked=args.book)
 
 
 if __name__ == "__main__":
