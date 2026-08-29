@@ -348,9 +348,14 @@ def main() -> None:
         if failed:
             risks.append(f"{failed} booking(s) failed — still unprocessed")
     elif certain:
-        todo.append(f"{len(certain)} confident classification(s) — review, then run with --book")
-    if questions:
-        todo.append(f"{len(questions)} unclear mutation(s) — classify manually")
+        todo.append(f"{len(certain)} confident classification(s) ready — review, then run with --book")
+    # itemize the uncertain ones — these are the individual calls only you can make
+    for v in questions:
+        m = per_id[v.mutation_id]
+        name = accounts.get(v.ledger_account_id, {}).get("name", "?")
+        cp = (m.get("contra_account_name") or "").strip() or "(no counterparty)"
+        todo.append(f"unclear · {m['date']} · €{float(m['amount']):.2f} · {cp} → {name}"
+                    f" ({v.confidence:.0%}) — {v.rationale}")
     if any(float(per_id[v.mutation_id]["amount"]) < 0 for v in certain):
         risks.append("some expense bookings won't register input VAT — attach the invoice/receipt")
     report.record("agent1", did, todo, risks, booked=args.book)
