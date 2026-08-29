@@ -13,13 +13,13 @@ Usage:
 """
 import argparse
 import json
-import tomllib
 from datetime import date, datetime
 
 import anthropic
 from pydantic import BaseModel
 
 from moneybird import MODEL, THRESHOLD, mb, mb_list, chart_of_accounts, invoice_lines
+from config import require_year, load_tax_config
 
 # Statutory amounts per tax year — review/complete yearly.
 # Keys use Dutch fiscal terms glossed here:
@@ -188,8 +188,8 @@ def main() -> None:
     args = p.parse_args()
     year = args.fiscal_year
 
-    with open("tax.toml", "rb") as f:
-        cfg = tomllib.load(f)[str(year)]
+    require_year(TAX, year, "tax deduction")
+    cfg = load_tax_config(year)
 
     # 1. accruals
     proposals = accrual_proposals(year)

@@ -19,6 +19,7 @@ import anthropic
 from pydantic import BaseModel
 
 from moneybird import MODEL, THRESHOLD, mb, mb_list, chart_of_accounts, invoice_lines
+from config import require_year
 
 CAPITALIZATION_THRESHOLD = 450.0  # excl. VAT, per fixed asset
 
@@ -145,6 +146,8 @@ def main() -> None:
     p.add_argument("--book", action="store_true", help="also capitalize certain proposals")
     args = p.parse_args()
     year = args.fiscal_year
+
+    require_year(KIA, year, "KIA scale")
 
     asset_list = assets()
     already_capitalized = capitalized_detail_ids(asset_list)

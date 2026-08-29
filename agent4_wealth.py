@@ -16,13 +16,13 @@ import base64
 import json
 import re
 import subprocess
-import tomllib
 from pathlib import Path
 
 import anthropic
 from pydantic import BaseModel
 
 from moneybird import MODEL, mb, mb_list
+from config import require_year, load_tax_config
 
 # Statutory annual-margin parameters per tax year.
 # ponytail: 2025 amounts; verify the 2026 offset/maxima on belastingdienst.nl.
@@ -128,8 +128,8 @@ def main() -> None:
     args = p.parse_args()
     year = args.year
 
-    with open("tax.toml", "rb") as f:
-        cfg = tomllib.load(f)[str(year)]
+    require_year(ANNUAL_MARGIN, year, "annual margin")
+    cfg = load_tax_config(year)
     income = cfg["aggregate_income_prev_year"]
     factor_a = cfg["factor_a_prev_year"]
 
