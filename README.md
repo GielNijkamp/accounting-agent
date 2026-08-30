@@ -1,4 +1,4 @@
-# accounting-agent
+# boekpilot
 
 **Unofficial, LLM-assisted bookkeeping & tax automation for [Moneybird](https://www.moneybird.com/) — built for Dutch sole traders (zzp).**
 
