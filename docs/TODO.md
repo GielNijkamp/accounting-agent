@@ -4,11 +4,12 @@ Manual actions the agents cannot do themselves. Order = priority.
 
 ## 1. Set ANTHROPIC_API_KEY
 
-All four agents use Claude for their LLM step (classifying, judging accruals, recognizing
+All four agents use an LLM for their reasoning step (classifying, judging accruals, recognizing
 fixed assets, reading PDFs). Without a key every agent crashes the moment that step is needed —
 so this blocks everything.
 
-Create a key at https://platform.claude.com and put it in your shell profile:
+Create an API key at console.anthropic.com. For the scheduled run, put it in a git-ignored
+`.env` (copy `.env.example`); for manual runs, export it in your shell:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...

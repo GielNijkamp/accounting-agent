@@ -2,7 +2,7 @@
 """Agent 1 on Moneybird: classifies unprocessed bank mutations to ledger accounts.
 
 Moneybird is both the datastore and the review dashboard (bookings can be unlinked
-there). moneybird-cli handles all API calls; this script orchestrates and lets Claude
+there). moneybird-cli handles all API calls; this script orchestrates and lets an LLM
 judge.
 
 Usage:

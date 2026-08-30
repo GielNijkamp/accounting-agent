@@ -1,9 +1,12 @@
 # Accounting agents
 
-Four small [Claude](https://claude.com)-powered agents that automate the recurring bookkeeping
-and tax admin of a Dutch sole trader (zzp) on top of [Moneybird](https://www.moneybird.com/).
+Four small agents that automate the recurring bookkeeping and tax admin of a Dutch sole trader
+(zzp) on top of [Moneybird](https://www.moneybird.com/). This framework supplements Moneybird's
+software ([github.com/moneybird](https://github.com/moneybird)) by continuously checking a
+Moneybird administration and proposing the bookings and tax steps it finds.
+
 Moneybird is the datastore and the review dashboard; a separate command-line tool,
-`moneybird-cli`, handles every API call, the scripts orchestrate, and Claude does the judgment
+`moneybird-cli`, handles every API call, the scripts orchestrate, and an LLM makes the judgment
 calls. `moneybird-cli` is a required external dependency and is **not** included in this repo
 (see [Setup](#setup)).
 
@@ -38,7 +41,7 @@ Requires:
 ```bash
 python -m venv .venv
 .venv/bin/pip install -r requirements.txt
-export ANTHROPIC_API_KEY=sk-ant-...        # https://platform.claude.com
+export ANTHROPIC_API_KEY=sk-ant-...        # from console.anthropic.com
 moneybird-cli login <token>                # your Moneybird CLI, if not already logged in
 ```
 

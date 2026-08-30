@@ -1,4 +1,4 @@
-"""Shared helpers for the accounting agents: the moneybird-cli wrapper, the Claude model
+"""Shared helpers for the accounting agents: the moneybird-cli wrapper, the LLM model
 choice, the booking confidence threshold, and the two data readers used by more than one
 agent.
 
@@ -7,7 +7,7 @@ Kept separate so no agent has to import from another agent's script.
 import json
 import subprocess
 
-MODEL = "claude-sonnet-4-6"  # classification/extraction: Sonnet is more than enough
+MODEL = "claude-sonnet-4-6"  # model id for the LLM classification/extraction step
 THRESHOLD = 0.8              # confidence at/above which a proposal is auto-bookable
 
 
