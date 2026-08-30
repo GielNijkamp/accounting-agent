@@ -1,17 +1,24 @@
-# Accounting agents
+# accounting-agent
 
-Four small agents that automate the recurring bookkeeping and tax admin of a Dutch sole trader
-(zzp) on top of [Moneybird](https://www.moneybird.com/). This framework supplements Moneybird's
-software ([github.com/moneybird](https://github.com/moneybird)) by continuously checking a
-Moneybird administration and proposing the bookings and tax steps it finds.
+**Unofficial, LLM-assisted bookkeeping & tax automation for [Moneybird](https://www.moneybird.com/) — built for Dutch sole traders (zzp).**
 
-Moneybird is the datastore and the review dashboard; a separate command-line tool,
-`moneybird-cli`, handles every API call, the scripts orchestrate, and an LLM makes the judgment
-calls. `moneybird-cli` is a required external dependency and is **not** included in this repo
-(see [Setup](#setup)).
+> ⚠️ **Unofficial add-on.** An independent, third-party project — **not** affiliated with, endorsed by, or sponsored by Moneybird B.V. "Moneybird" is a trademark of its owner and is used here only to describe compatibility. See [Disclaimer](#disclaimer).
 
-Every agent runs read-only by default (it only prints proposals). Nothing is written to
-Moneybird unless you pass `--book`, and every booking can be reverted in Moneybird.
+Four small agents watch a Moneybird administration and handle the recurring, easy-to-forget
+bookkeeping and tax work a zzp faces — classifying bank transactions, spotting prepaid expenses,
+capitalizing assets, tracking the hours criterion and deduction position — then hand you one
+report of exactly what to review and do. **Read-only by default:** nothing is written to your
+books unless you pass `--book`, and every booking is reversible in Moneybird.
+
+## Highlights
+
+- **Read-only & reversible** — proposes, never books, until you opt in with `--book`.
+- **Human-in-the-loop** — confident items are auto-bookable; anything uncertain lands on a review list *with the reasoning*, so you stay in control.
+- **One consolidated report** — a weekly *"what ran / what needs you / what's risky"* summary, itemized, plus a desktop notification.
+- **Dutch fiscal logic, in code** — hours criterion, KIA, MKB profit exemption, jaarruimte — deterministic where possible; an LLM only for the genuinely fuzzy calls.
+- **Your data stays yours** — figures and secrets live in git-ignored files; the repo ships no personal data.
+
+> **Requires [`moneybird-cli`](#setup)** — a command-line wrapper around the Moneybird API — on your `PATH`. It is a separate tool and is **not** included here.
 
 ## The agents
 
@@ -77,8 +84,9 @@ python agent3_asset.py --fiscal-year 2026   # capitalization + KIA
 python agent4_wealth.py --year 2026         # annual margin
 ```
 
-`run_weekly.sh` runs Agent 1 and Agent 3 without `--book` and logs to `logs/`; it is meant to be
-scheduled (e.g. via launchd/cron) and posts a macOS notification when done.
+`run_weekly.sh` runs all four agents read-only (propose-only), writes a consolidated report to
+`logs/report-<date>.md`, and posts a summary macOS notification — meant to be scheduled via
+launchd/cron. It reads your key from a git-ignored `.env` (see [Setup](#setup)).
 
 ## Before the first real run
 
@@ -101,6 +109,17 @@ into English: *KIA* (kleinschaligheidsinvesteringsaftrek, small-scale investment
 *factor A* (pension accrual), *annual margin* (jaarruimte), *accruals* (transitoria),
 *self-employed / starter deduction* (zelfstandigen- / startersaftrek), *SME profit exemption*
 (MKB-winstvrijstelling).
+
+## Disclaimer
+
+- **Unofficial.** An independent project, not affiliated with, endorsed by, or sponsored by
+  Moneybird B.V. "Moneybird" and related names/marks belong to their respective owner and are
+  used here only to describe interoperability.
+- **Not tax or accounting advice.** The agents *propose* bookings and *compute* tax figures for
+  your review — they file nothing. Verify every number and consult a qualified accountant or
+  tax adviser before you act. Statutory amounts and rules change; check them (see `docs/TODO.md`).
+- **Use at your own risk.** Read-only by default; `--book` writes to your live administration.
+  Provided under the MIT license, **without warranty of any kind**.
 
 ## License
 
