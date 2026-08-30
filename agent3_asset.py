@@ -18,7 +18,7 @@ from datetime import date
 import anthropic
 from pydantic import BaseModel
 
-from moneybird import MODEL, THRESHOLD, mb, mb_list, chart_of_accounts, invoice_lines
+from moneybird import llm_model, THRESHOLD, mb, mb_list, chart_of_accounts, invoice_lines
 from config import require_year
 import report
 
@@ -128,7 +128,7 @@ def assess(candidates: list[dict]) -> list[AssetJudgment]:
         ensure_ascii=False,
     )
     response = client.messages.parse(
-        model=MODEL, max_tokens=8192, system=SYSTEM,
+        model=llm_model(), max_tokens=8192, system=SYSTEM,
         messages=[{"role": "user", "content": f"Invoice lines:\n{payload}"}],
         output_format=AssetJudgments,
     )

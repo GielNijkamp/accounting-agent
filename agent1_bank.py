@@ -18,7 +18,7 @@ from typing import Any
 import anthropic
 from pydantic import BaseModel
 
-from moneybird import MODEL, THRESHOLD, mb, mb_list, chart_of_accounts
+from moneybird import llm_model, THRESHOLD, mb, mb_list, chart_of_accounts
 import report
 
 BATCH = 25
@@ -224,7 +224,7 @@ def classify(mutations: list[dict], accounts: dict[str, dict], company_context: 
         )
         system_prompt = f"{SYSTEM}\n\nCompany context of the current administration:\n{company_context}"
         response = client.messages.parse(
-            model=MODEL,
+            model=llm_model(),
             max_tokens=8192,
             system=system_prompt,
             messages=[{

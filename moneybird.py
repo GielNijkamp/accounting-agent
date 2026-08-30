@@ -5,10 +5,19 @@ agent.
 Kept separate so no agent has to import from another agent's script.
 """
 import json
+import os
 import subprocess
 
-MODEL = "claude-sonnet-4-6"  # model id for the LLM classification/extraction step
-THRESHOLD = 0.8              # confidence at/above which a proposal is auto-bookable
+THRESHOLD = 0.8  # confidence at/above which a proposal is auto-bookable
+
+
+def llm_model() -> str:
+    """Model id for the LLM classification/extraction step, read from LLM_MODEL in .env.
+    Raises a clear error if it isn't set (only the agents that call the LLM need it)."""
+    m = os.environ.get("LLM_MODEL")
+    if not m:
+        raise SystemExit("LLM_MODEL is not set — add it to .env (see .env.example)")
+    return m
 
 
 def mb(*args: str):

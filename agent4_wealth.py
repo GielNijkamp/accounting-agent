@@ -21,7 +21,7 @@ from pathlib import Path
 import anthropic
 from pydantic import BaseModel
 
-from moneybird import MODEL, mb, mb_list
+from moneybird import llm_model, mb, mb_list
 from config import require_year, load_tax_config
 import report
 
@@ -108,7 +108,7 @@ def extract_annual_documents() -> list[AnnualDocument]:
     for doc_type, doc, att in inbox_pdfs():
         pdf = download_pdf(doc_type, doc["id"], att["id"])
         response = client.messages.parse(
-            model=MODEL, max_tokens=2048, system=EXTRACT_SYSTEM,
+            model=llm_model(), max_tokens=2048, system=EXTRACT_SYSTEM,
             messages=[{"role": "user", "content": [
                 {"type": "document", "source": {
                     "type": "base64", "media_type": "application/pdf",
