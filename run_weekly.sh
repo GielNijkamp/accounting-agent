@@ -9,13 +9,11 @@ BOOK=${BOOK:-0}
 cd "$(dirname "$0")"
 export PATH="$HOME/.local/bin:$PATH"
 
-# launchd/cron doesn't source ~/.zshrc, so read the key from there directly.
-# Take everything after the first '=' (values may contain '='), then strip surrounding quotes.
-key_line=$(grep -m1 '^[[:space:]]*export ANTHROPIC_API_KEY=' ~/.zshrc 2>/dev/null || true)
-key=${key_line#*=}
-key=${key#[\"\']}; key=${key%[\"\']}
-export ANTHROPIC_API_KEY="$key"
-[[ -z "$key" ]] && echo "warning: ANTHROPIC_API_KEY not found in ~/.zshrc" >&2
+# Load secrets from a git-ignored .env (launchd/cron doesn't read your shell profile).
+if [[ -f .env ]]; then
+  set -a; source ./.env; set +a
+fi
+[[ -z "${ANTHROPIC_API_KEY:-}" ]] && echo "warning: ANTHROPIC_API_KEY not set — copy .env.example to .env" >&2
 
 YEAR=$(date +%Y)
 # year boundary: in Jan/Feb also include the previous year, otherwise unprocessed

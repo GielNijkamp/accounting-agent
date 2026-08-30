@@ -6,6 +6,9 @@ __pycache__/
 # Runtime output
 logs/
 
+# Secrets — copy .env.example to .env and put your API key there
+.env
+
 # Your real tax inputs (personal figures) — copy tax.example.toml to tax.toml
 tax.toml
 

@@ -50,6 +50,13 @@ and `docs/TODO.md`. Your real `tax.toml` is git-ignored, so your figures stay ou
 cp tax.example.toml tax.toml     # then edit tax.toml with your own figures
 ```
 
+For the scheduled run (`run_weekly.sh`), put the key in a git-ignored `.env` instead — launchd/cron
+doesn't read your shell profile:
+
+```bash
+cp .env.example .env             # then put your ANTHROPIC_API_KEY in .env
+```
+
 Optional: fetch the OpenAPI reference spec used while building this (git-ignored):
 
 ```bash
