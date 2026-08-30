@@ -2,6 +2,8 @@
 
 **Unofficial, LLM-assisted bookkeeping & tax automation for [Moneybird](https://www.moneybird.com/) — built for Dutch sole traders (zzp).**
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue) ![Moneybird: unofficial add-on](https://img.shields.io/badge/Moneybird-unofficial%20add--on-orange) ![Writes: opt-in](https://img.shields.io/badge/writes-opt--in-brightgreen)
+
 > ⚠️ **Unofficial add-on.** An independent, third-party project — **not** affiliated with, endorsed by, or sponsored by Moneybird B.V. "Moneybird" is a trademark of its owner and is used here only to describe compatibility. See [Disclaimer](#disclaimer).
 
 Four small agents watch a Moneybird administration and handle the recurring, easy-to-forget
@@ -19,6 +21,15 @@ books unless you pass `--book`, and every booking is reversible in Moneybird.
 - **Your data stays yours** — figures and secrets live in git-ignored files; the repo ships no personal data.
 
 > **Requires [`moneybird-cli`](#setup)** — a command-line wrapper around the Moneybird API — on your `PATH`. It is a separate tool and is **not** included here.
+
+## Why this exists
+
+Moneybird is a great place to *store* your administration, but a sole trader still has to
+remember the recurring, judgment-heavy bits: which bank transactions go where, which invoices
+are prepaid across the year boundary, which purchases must be capitalized, whether the 1225-hour
+criterion is met, and how the deductions and *jaarruimte* work out. This project does that
+checking for you every week and hands back a short, itemized to-do list — so nothing slips, and
+you stay in control of every booking.
 
 ## The agents
 
