@@ -179,3 +179,84 @@ flowchart TD
     SEC --> NOTE["macOS notification<br>headline + report path"]
     NOTE --> E(["you review, book what you approve"])
 ```
+
+## Write-safety model (`--book`)
+
+How any proposal reaches (or doesn't reach) your books.
+
+```mermaid
+flowchart TD
+    P["Proposal from an agent"] --> RO{"--book passed?"}
+    RO -->|no| REP["Report as a proposal<br>(nothing written)"]
+    RO -->|yes| CONF{"confidence >= 0.8?"}
+    CONF -->|no| Q["Question list (you decide)"]
+    CONF -->|yes| PRE{"prerequisites met?"}
+    PRE -->|no| WARN["Warn + skip<br>(create the account in Moneybird)"]
+    PRE -->|yes| WRITE["Write via moneybird-cli<br>(continue past per-row failures)"]
+    WRITE --> MULTI{"multi-step write?"}
+    MULTI -->|no| DONE["Booked (reversible in Moneybird)"]
+    MULTI -->|yes| STEP2{"all steps ok?"}
+    STEP2 -->|yes| DONE
+    STEP2 -->|no| RB["Compensating rollback"]
+    RB --> RBOK{"rollback ok?"}
+    RBOK -->|yes| CLEAN["Consistent again — re-run to retry"]
+    RBOK -->|no| ORPH["Report orphan id — fix manually"]
+```
+
+## API call ordering (sequence diagrams)
+
+### Agent 1 — read, classify, and (optionally) book
+
+```mermaid
+sequenceDiagram
+    actor U as You
+    participant A as Agent 1
+    participant CLI as moneybird-cli
+    participant MB as Moneybird
+    participant LLM as LLM API
+    U->>A: run --period (read-only)
+    A->>CLI: financial_mutations list (mb_list)
+    CLI->>MB: GET financial_mutations
+    MB-->>A: mutations
+    A->>CLI: sales / purchase invoices list
+    CLI->>MB: GET invoices
+    MB-->>A: open invoices
+    Note over A: deterministic exact-total match
+    A->>LLM: classify remaining (batched)
+    LLM-->>A: proposals (account, confidence, reason)
+    Note over A: reconcile + split certain / questions
+    opt --book
+        A->>CLI: link_booking (per certain proposal)
+        CLI->>MB: PATCH financial_mutations
+        MB-->>A: booked
+    end
+    A-->>U: report (booked / to-do / risks)
+```
+
+### Accrual booking with rollback (`book_accruals`)
+
+```mermaid
+sequenceDiagram
+    participant A as Agent 2
+    participant CLI as moneybird-cli
+    participant MB as Moneybird
+    A->>CLI: general_journal_documents list
+    CLI->>MB: GET journals
+    MB-->>A: existing references
+    alt both accrual journals exist
+        Note over A: skip — already posted
+    else neither exists
+        A->>CLI: create accruals-Y (31 Dec)
+        CLI->>MB: POST journal A
+        MB-->>A: id A
+        A->>CLI: create accruals-Y-reversal (1 Jan)
+        CLI->>MB: POST journal B
+        alt reversal succeeds
+            MB-->>A: id B (posted)
+        else reversal fails
+            A->>CLI: delete journal A
+            CLI->>MB: DELETE journal A (rollback)
+            MB-->>A: rolled back
+        end
+    end
+```
