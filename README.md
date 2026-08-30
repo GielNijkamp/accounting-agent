@@ -44,7 +44,7 @@ Deterministic tax logic lives in code (period allocation, hours criterion, KIA s
 annual-margin formula); only the genuinely fuzzy calls go to the LLM. Shared helpers (the
 `moneybird-cli` wrapper, model choice, threshold, common data readers) live in `moneybird.py`.
 See `docs/COMMANDS.md` for the exact `moneybird-cli` commands, required token scopes, and the
-role split per agent.
+role split per agent, and [`docs/diagrams.md`](docs/diagrams.md) for a flowchart of every process.
 
 ## Setup
 
